@@ -15,21 +15,21 @@ A simple yet powerful Flask application that provides an intuitive dashboard for
 ## Screenshots
 
 **Main Dashboard:** At-a-glance statistics and activity charts.
-![Main Dashboard](images/Jason-webhook-server.PNG)
+![Main Dashboard](Images/json-webhook-server.PNG)
 
 **Generate a Webhook:** After clicking "Generate New Webhook", the new URL and ID are instantly displayed.
-![Generating a Webhook](images/generate-new-webhook.PNG)
+![Generating a Webhook](Images/generate-new-webhook.PNG)
 
 **View All Webhooks:** A paginated list of all generated webhooks with their stats.
-![All Webhooks Page](images/all-webhooks.PNG)
+![All Webhooks Page](Images/all-webhooks.PNG)
 
 **Inspect Payloads in Real-Time:** The detailed view for a webhook shows all received payloads. New payloads appear at the top automatically without needing a page refresh.
 
 *Initial payload received:*
-![Payload View 1](images/testing%201.PNG)
+![Payload View 1](Images/testing%201.PNG)
 
 *As more payloads arrive, they are added to the top of the list instantly:*
-![Payload View 2](images/testing%202.PNG)
+![Payload View 2](Images/testing%202.PNG)
 
 ## Prerequisites
 
