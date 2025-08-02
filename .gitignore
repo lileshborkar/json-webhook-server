@@ -1,11 +1,20 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
 # Virtual Environment
 venv/
 
-# Database and Backups
-webhook_data.db
+# Database files
+*.db
+*.sqlite3
+
+# Backup files
 backups/
 *.zip
+
+# IDE / Editor specific
+.vscode/
+.idea/
