@@ -1,0 +1,2 @@
+# Enforce Unix-style (LF) line endings for shell scripts for cross-platform compatibility.
+*.sh text eol=lf

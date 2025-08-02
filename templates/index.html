@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid pt-3">
+    <!-- App Title and Description -->
+    <div class="p-4 mb-4 bg-light rounded-3">
+        <div class="container-fluid py-3">
+            <h1 class="display-5 fw-bold">JSON Webhook Server</h1>
+            <p class="col-md-10 fs-5">An intuitive dashboard for creating and inspecting webhook requests. Generate unique URLs to receive, test, and debug JSON payloads from your client applications in real-time.</p>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+        <h1 class="h2">Dashboard</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{{ url_for('list_all_webhooks') }}" class="btn btn-secondary me-2">
+                <i class="bi bi-list-ul me-1"></i> View All Webhooks
+            </a>
+            <form action="{{ url_for('generate_webhook') }}" method="post">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i> Generate New Webhook
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Newly Generated Webhook Display -->
+    {% with messages = get_flashed_messages(category_filter=['new_webhook']) %}
+        {% if messages %}
+            {% for message in messages %}
+                {% set parts = message.split('|') %}
+                {% set webhook_id = parts[0] %}
+                {% set webhook_url = parts[1] %}
+            <div class="alert alert-success d-flex flex-wrap justify-content-between align-items-center" role="alert">
+                <div class="me-3">
+                    <h5 class="alert-heading mb-1">New Webhook Ready!</h5>
+                    <p class="mb-0">
+                        <strong>URL:</strong> <span id="new-webhook-url">{{ webhook_url }}</span>
+                        <br>
+                        <small class="text-muted"><strong>ID:</strong> {{ webhook_id }}</small>
+                    </p>
+                </div>
+                <div class="btn-toolbar mt-2 mt-md-0">
+                    <button class="btn btn-light me-2" onclick="copyToClipboard('new-webhook-url', this)">
+                        <i class="bi bi-clipboard me-1"></i><span class="copy-text">Copy URL</span>
+                    </button>
+                    <a href="{{ url_for('show_webhook_data', webhook_id=webhook_id) }}" class="btn btn-info">
+                        <i class="bi bi-search me-1"></i> Check Received Payloads
+                    </a>
+                </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Stat Cards -->
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <div class="card text-white bg-primary h-100">
+                <div class="card-header">Total Webhooks</div>
+                <div class="card-body">
+                    <h4 class="card-title display-4">{{ total_webhooks }}</h4>
+                    <p class="card-text">Total number of webhooks created.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card text-white bg-success h-100">
+                <div class="card-header">Payloads Succeeded (24h)</div>
+                <div class="card-body">
+                    <h4 class="card-title display-4">{{ success_today }}</h4>
+                    <p class="card-text">Successfully processed payloads in the last 24 hours.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card text-white bg-danger h-100">
+                <div class="card-header">Failures (24h)</div>
+                <div class="card-body">
+                    <h4 class="card-title display-4">{{ failures_today }}</h4>
+                    <p class="card-text">Failed payloads in the last 24 hours.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Combined Chart and Daily Stats Table -->
+    <div class="row mt-4">
+        <div class="col-lg-7 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Activity Chart (Last 7 Days)</div>
+                <div class="card-body">
+                    <canvas id="activityChart" style="min-height: 300px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Daily Activity Statistics</div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Created</th>
+                                <th>Succeeded</th>
+                                <th>Failed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for day in daily_stats | reverse %}
+                            <tr>
+                                <td>{{ day.date }}</td>
+                                <td><span class="badge bg-primary">{{ day.created }}</span></td>
+                                <td><span class="badge bg-success">{{ day.succeeded }}</span></td>
+                                <td><span class="badge bg-danger">{{ day.failed }}</span></td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center">No activity in the last 7 days.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    function copyToClipboard(elementId, button) {
+        const textToCopy = document.getElementById(elementId).innerText;
+        const copyTextSpan = button.querySelector('.copy-text');
+        if (!copyTextSpan) return;
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            const originalText = copyTextSpan.innerText;
+            copyTextSpan.innerText = 'Copied!';
+            button.classList.add('btn-success');
+            button.classList.remove('btn-light');
+
+            setTimeout(() => {
+                copyTextSpan.innerText = originalText;
+                button.classList.remove('btn-success');
+                button.classList.add('btn-light');
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+            copyTextSpan.innerText = 'Error';
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const prepareChartData = (data, dateKey) => ({
+            labels: data.map(item => item[dateKey]),
+            counts: data.map(item => item.count)
+        });
+
+        const creationData = prepareChartData({{ chart_creation_data | tojson | safe }}, 'creation_date');
+        const successData  = prepareChartData({{ chart_success_data | tojson | safe }}, 'event_date');
+        const failureData = prepareChartData({{ chart_failure_data | tojson | safe }}, 'event_date');
+
+        // Create a master list of all unique dates from all datasets to ensure alignment
+        const allLabels = [...new Set([...creationData.labels, ...successData.labels, ...failureData.labels])].sort();
+
+        new Chart(document.getElementById('activityChart'), {
+            type: 'line',
+            data: {
+                labels: allLabels,
+                datasets: [{
+                    label: 'Webhooks Created',
+                    data: allLabels.map(label => creationData.counts[creationData.labels.indexOf(label)] || 0),
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    tension: 0.1
+                }, {
+                    label: 'Payloads Succeeded',
+                    data: allLabels.map(label => successData.counts[successData.labels.indexOf(label)] || 0),
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    tension: 0.1
+                }, {
+                    label: 'Payloads Failed',
+                    data: allLabels.map(label => failureData.counts[failureData.labels.indexOf(label)] || 0),
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    tension: 0.1
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, suggestedMax: 10 } } }
+        });
+    });
+</script>
+{% endblock %}

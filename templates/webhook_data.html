@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Webhook Payloads{% endblock %}
+
+{% block content %}
+<div class="container-fluid pt-3">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+        <div>
+            <h1 class="h2">Received Payloads</h1>
+            <p class="text-muted mb-0"><strong>URL:</strong> {{ webhook.url }}</p>
+            <p class="text-muted"><small><strong>ID:</strong> {{ webhook.id }}</small></p>
+        </div>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{{ url_for('download_webhook_data', webhook_id=webhook.id) }}" class="btn btn-success"><i class="bi bi-download me-1"></i> Download All as JSON</a>
+        </div>
+    </div>
+
+    <div id="payloads-container">
+        {% if payloads %}
+            {% for payload in payloads %}
+            <div class="card mb-3" data-timestamp="{{ payload.timestamp }}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><strong>Timestamp:</strong> {{ payload.timestamp }}</span>
+                    <a href="{{ url_for('download_single_payload', payload_id=payload.id) }}" class="btn btn-sm btn-outline-primary">Download Payload</a>
+                </div>
+                <div class="card-body bg-light">
+                    <pre class="mb-0"><code>{{ payload.payload | pretty_json }}</code></pre>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info" role="alert">
+                No payloads have been received for this webhook yet.
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('show_webhook_data', webhook_id=webhook.id, page=current_page - 1) }}">Previous</a>
+            </li>
+            {% for page_num in range(1, total_pages + 1) %}
+            <li class="page-item {% if page_num == current_page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('show_webhook_data', webhook_id=webhook.id, page=page_num) }}">{{ page_num }}</a>
+            </li>
+            {% endfor %}
+            <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('show_webhook_data', webhook_id=webhook.id, page=current_page + 1) }}">Next</a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const webhookId = '{{ webhook.id }}';
+    const payloadsContainer = document.getElementById('payloads-container');
+    const socket = io();
+
+    function escapeHtml(unsafe) {
+        return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    function createPayloadCard(payload) {
+        const prettyPayload = JSON.stringify(JSON.parse(payload.payload), null, 2);
+        const downloadUrl = `{{ url_for('download_single_payload', payload_id=0) }}`.replace('0', payload.id);
+
+        const card = document.createElement('div');
+        card.className = 'card mb-3';
+        card.innerHTML = `
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><strong>Timestamp:</strong> ${payload.timestamp}</span>
+                <a href="${downloadUrl}" class="btn btn-sm btn-outline-primary">Download Payload</a>
+            </div>
+            <div class="card-body bg-light">
+                <pre class="mb-0"><code>${escapeHtml(prettyPayload)}</code></pre>
+            </div>`;
+        return card;
+    }
+
+    // 1. Join the room for this specific webhook
+    socket.on('connect', () => {
+        socket.emit('join', { webhook_id: webhookId });
+    });
+
+    // 2. Listen for new payloads and add them to the top of the list
+    socket.on('new_payload', (payload) => {
+        const noPayloadsAlert = payloadsContainer.querySelector('.alert');
+        if (noPayloadsAlert) noPayloadsAlert.remove();
+        
+        const newCard = createPayloadCard(payload);
+        payloadsContainer.prepend(newCard);
+    });
+});
+</script>
+{% endblock %}
